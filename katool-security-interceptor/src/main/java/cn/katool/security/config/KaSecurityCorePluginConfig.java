@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -81,8 +82,12 @@ public class KaSecurityCorePluginConfig {
     }
     public static volatile Boolean backup = true;
 
-    @Scheduled(fixedRate = 3 * 60 * 1000)
-    public void initLoad() {
+
+    @ConfigurationProperties("katool.security.plugin")
+    public void initLoad(Boolean enable, String packageName, List<String> classUrls) {
+        this.setEnable(enable);
+        this.setPackageName(packageName);
+        this.setClassUrls(classUrls);
         if (!valid()) {
             return;
         }
