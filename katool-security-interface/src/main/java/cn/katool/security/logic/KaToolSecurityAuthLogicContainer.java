@@ -49,6 +49,21 @@ public class KaToolSecurityAuthLogicContainer {
         }
         list.add(posation,logic);
     }
+    public static void set(Integer posation, KaSecurityAuthLogic logic){
+        if (ObjectUtils.isEmpty(logic)){
+            throw new IllegalArgumentException("logic is null.");
+        }
+        if (posation> list.size()){
+            posation = list.size();
+        }
+        else if (posation<0){
+            posation = list.size() + posation;
+        }
+        else {
+            list.add(logic);
+        }
+        list.set(posation,logic);
+    }
 
     public static KaSecurityAuthLogic poll(){
         KaSecurityAuthLogic kaSecurityAuthLogic = list.get(0);

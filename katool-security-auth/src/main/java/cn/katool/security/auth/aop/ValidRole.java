@@ -15,6 +15,7 @@ package cn.katool.security.auth.aop;
 import cn.katool.security.auth.model.entity.KaSecurityUser;
 import cn.katool.security.auth.exception.BusinessException;
 import cn.katool.security.auth.exception.ErrorCode;
+import cn.katool.security.config.KaSecurityCorePluginConfig;
 import cn.katool.security.core.config.KaSecurityCoreConfig;
 import cn.katool.security.core.utils.JSONUtils;
 import cn.katool.util.auth.AuthUtil;

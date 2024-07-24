@@ -15,16 +15,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -34,9 +38,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @AllArgsConstructor
 @NoArgsConstructor
-@RefreshScope
 @Component("KaSecurityConfig-PLUGIN")
-@ConfigurationProperties("katool.security.plugin")
+@RefreshScope
+@ConfigurationProperties(prefix = "katool.security.plugin")
 public class KaSecurityCorePluginConfig {
     /**
      * 是否开启插件化插入（插件化控制 > 配置类控制）
@@ -47,6 +51,12 @@ public class KaSecurityCorePluginConfig {
 
      String packageName = "";
 
+
+}
+
+@Slf4j
+@Component
+class KaSecurityCorePluginLoader{
     static CaffeineUtils<String,Object> flagBook = new CaffeineUtils<String,Object>(Caffeine.newBuilder()
             .expireAfterAccess(30, TimeUnit.SECONDS)
             .maximumSize(10)
@@ -77,14 +87,35 @@ public class KaSecurityCorePluginConfig {
                 listEq(oldClassUrls,this.getClassUrls())){
             return false;
         }
+
         return true;
     }
+
+
+    @Resource
+    KaSecurityCorePluginConfig kaSecurityCorePluginConfig;
+
+    private List<String> getClassUrls() {
+        return kaSecurityCorePluginConfig.getClassUrls();
+    }
+
+    private String  getPackageName() {
+        return kaSecurityCorePluginConfig.getPackageName();
+    }
+
+    private Boolean getEnable() {
+        return kaSecurityCorePluginConfig.getEnable();
+    }
+
     public static volatile Boolean backup = true;
 
-    @Scheduled(fixedRate = 3 * 60 * 1000)
+    ConcurrentHashMap<String,KaSecurityAuthLogic> logicCoantainer = new ConcurrentHashMap<>();
+
+
+    @Scheduled(fixedRate = 5000)
     public void initLoad() {
         if (!valid()) {
-            return;
+            return ;
         }
         if (backup) {
             backup = false;
@@ -119,7 +150,7 @@ public class KaSecurityCorePluginConfig {
                     throw new RuntimeException(e);
                 }
                 logicList.add(logic);
-                SpringContextUtils.regBeanNotAutoWire(className, logic);
+                logicCoantainer.put(className, logic);
             });
             List<String> innerList = this.getClassUrls().stream().filter(v -> oldClassUrls.contains(v)).collect(Collectors.toList());
             innerList.forEach(classUrl -> {
@@ -133,14 +164,19 @@ public class KaSecurityCorePluginConfig {
                 if (StringUtils.isBlank(className)) {
                     throw new KaToolException(ErrorCode.PARAMS_ERROR, "Class文件名不符法，请使用.class最为后缀，同时保证文件名是类名");
                 }
-                KaSecurityAuthLogic logic = (KaSecurityAuthLogic) SpringContextUtils.getBean(className);
-                logic.loadPlugin();
+                KaSecurityAuthLogic logic = (KaSecurityAuthLogic) logicCoantainer.get(className);
+                if (null != logic){
+                    logic.loadPlugin();
+                }
             });
             clearOldBean();
             // 统一处理，避免异常。
             log.debug("[katool-security-auth-plugn-instead]:正在对鉴权逻辑进行替换");
             KaToolSecurityAuthLogicContainer.clear();
             logicList.forEach(KaSecurityAuthLogic::loadPlugin);
+            flagBook.put("enable", this.getEnable() != null ? this.getEnable() : false);
+            flagBook.put("packageName", this.getPackageName() != null ? this.getPackageName() : "");
+            flagBook.put("classUrls", this.getClassUrls() != null ? this.getClassUrls() : new ArrayList<String>());
         } else {
             if (BooleanUtils.isFalse(this.getEnable())) {
                 CopyOnWriteArrayList<KaSecurityAuthLogic> backUplist = (CopyOnWriteArrayList<KaSecurityAuthLogic>) flagBook.getIfNotExist("backUplist", new CopyOnWriteArrayList<KaSecurityAuthLogic>());
@@ -150,6 +186,7 @@ public class KaSecurityCorePluginConfig {
             flagBook.put("packageName", this.getPackageName() != null ? this.getPackageName() : "");
             flagBook.put("classUrls", this.getClassUrls() != null ? this.getClassUrls() : new ArrayList<String>());
         }
+        return ;
     }
 
     private void clearOldBean() {

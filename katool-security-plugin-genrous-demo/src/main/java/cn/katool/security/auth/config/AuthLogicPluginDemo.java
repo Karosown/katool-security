@@ -19,17 +19,20 @@ public class AuthLogicPluginDemo extends KaSecurityAuthUtil implements KaSecurit
 
     @Override
     public List<String> getUserRoleList() {
+        System.out.println("测试");
         return null;
     }
 
     @Override
     public List<String> getUserPermissionCodeList() {
+        System.out.println("测试");
         return null;
     }
 
     @Override
     public void loadPlugin() {
-
+        System.out.println("替换");
+        KaToolSecurityAuthLogicContainer.set(0,this);
     }
 
 

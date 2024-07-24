@@ -1,5 +1,6 @@
 package cn.katool.security.auth;
 
+import cn.katool.security.config.KaSecurityCorePluginConfig;
 import com.github.xiaoymin.knife4j.spring.annotations.EnableKnife4j;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.mybatis.spring.annotation.MapperScan;
